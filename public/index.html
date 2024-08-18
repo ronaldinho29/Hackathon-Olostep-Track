@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraper</title>
+</head>
+<body>
+    <h1>Web Scraper</h1>
+    <form id="scrape-form">
+        <label for="url">URL:</label>
+        <input type="text" id="url" name="url" required>
+        <br>
+        <label for="selector">CSS Selector:</label>
+        <input type="text" id="selector" name="selector" required>
+        <br>
+        <label for="dataFormat">Data Format (regex):</label>
+        <input type="text" id="dataFormat" name="dataFormat" required>
+        <br>
+        <button type="submit">Scrape</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('scrape-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const url = document.getElementById('url').value;
+            const selector = document.getElementById('selector').value;
+            const dataFormat = document.getElementById('dataFormat').value;
+
+            try {
+                const response = await fetch('/scrape', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url, selector, dataFormat }),
+                });
+                const result = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(result, null, 2);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

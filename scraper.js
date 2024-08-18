@@ -1,13 +1,20 @@
+const express = require('express');
+const bodyParser = require('body-parser');
 const puppeteer = require('puppeteer');
 const { MongoClient } = require('mongodb');
+const process = require('process');
 
-const url = 'https://www.complex.com/sports/a/adam-caparell/best-nba-players-of-all-time-ranked';
 const mongoUrl = 'mongodb+srv://ronaldchomnou:Ronaldinho2910@cluster0.39ac5k2.mongodb.net/OlostepTrack?retryWrites=true&w=majority&appName=Cluster0';
+const dbName = 'OlostepTrack';
+const collectionName = 'BestPlayers';
 
-async function scrapeData() {
-    const browser = await puppeteer.launch({
-        executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', // Path to Chrome
-    });
+const app = express();
+app.use(bodyParser.json());
+app.use(express.static('public'));
+
+// Function to scrape data from the provided URL
+async function scrapeData(url, selector, dataFormat) {
+    const browser = await puppeteer.launch();
     const page = await browser.newPage();
     
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
@@ -16,28 +23,30 @@ async function scrapeData() {
         const response = await page.goto(url, { waitUntil: 'networkidle2' });
         
         if (response.status() === 404) {
-            console.error('Error: Page not found (404)');
-            return null;
+            throw new Error('Page not found (404)');
         }
         
-        const data = await page.evaluate(() => {
-            const players = [];
+        const data = await page.evaluate((selector, dataFormat) => {
+            const items = [];
             
-            document.querySelectorAll('h2').forEach((element) => {
+            document.querySelectorAll(selector).forEach((element) => {
                 const text = element.innerText.trim();
-                if (text && !text.includes('Do Not Sell or Share My Personal Data')) {
-                    players.push(text);
+                if (text) {
+                    items.push(text);
                 }
             });
-            
-            const sortedPlayers = players.map((item) => {
-                const match = item.match(/^(\d+)\.\s*(.*)$/);
-                return match ? { rank: parseInt(match[1]), name: match[2] } : null;
-            }).filter(item => item !== null)
-            .sort((a, b) => a.rank - b.rank);
 
-            return sortedPlayers;
-        });
+            // Convert the dataFormat to a RegExp object
+            const regex = new RegExp(dataFormat, 'i');
+
+            const parsedData = items.map((item) => {
+                const match = item.match(regex);
+                return match ? { text: match[0] } : null;
+            }).filter(item => item !== null);
+
+            return parsedData;
+
+        }, selector, dataFormat);
 
         return data;
 
@@ -50,33 +59,84 @@ async function scrapeData() {
     }
 }
 
-async function saveToMongoDB(players) {
+// Function to connect to MongoDB
+async function connectToMongo() {
     const client = new MongoClient(mongoUrl);
+    await client.connect();
+    return client;
+}
 
-    if (!players) {
-        console.log('No data to save.');
-        return;
-    }
-
+// Function to delete all documents from the collection
+async function deleteAllDocuments() {
+    const client = await connectToMongo();
     try {
-        await client.connect();
-        const database = client.db('OlostepTrack');
-        const collection = database.collection('BestPlayers');
-        
-        await collection.insertMany(players);
-        console.log('Player data has been successfully saved to MongoDB!');
-
+        const database = client.db(dbName);
+        const collection = database.collection(collectionName);
+        const result = await collection.deleteMany({});
+        console.log(`Deleted ${result.deletedCount} documents.`);
     } catch (error) {
-        console.error('Error connecting to MongoDB:', error);
-
+        console.error('Error deleting documents:', error);
     } finally {
         await client.close();
     }
 }
 
-async function main() {
-    const players = await scrapeData();
-    await saveToMongoDB(players);
+// Command-line argument handling
+const command = process.argv[2];
+
+if (command === 'deleteAll') {
+    deleteAllDocuments().then(() => {
+        process.exit();
+    }).catch((error) => {
+        console.error('Error:', error);
+        process.exit(1);
+    });
 }
 
-main();
+// Express endpoints
+app.post('/scrape', async (req, res) => {
+    const { url, selector, dataFormat } = req.body;
+    
+    if (!url || !selector || !dataFormat) {
+        return res.status(400).json({ error: 'URL, selector, and dataFormat are required' });
+    }
+
+    try {
+        const data = await scrapeData(url, selector, dataFormat);
+
+        if (!data) {
+            return res.status(500).json({ error: 'Failed to scrape data' });
+        }
+
+        // Save to MongoDB
+        const client = await connectToMongo();
+        const database = client.db(dbName);
+        const collection = database.collection(collectionName);
+        await collection.insertMany(data);
+        await client.close();
+
+        res.json({ message: 'Data scraped and saved successfully!', data });
+
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Endpoint to delete all data from the collection
+app.delete('/deleteAll', async (req, res) => {
+    try {
+        await deleteAllDocuments();
+        res.json({ message: 'All documents deleted successfully.' });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Serve the static frontend files
+app.use(express.static('public'));
+
+app.listen(3000, () => {
+    console.log('Server is running on http://localhost:3000');
+});
