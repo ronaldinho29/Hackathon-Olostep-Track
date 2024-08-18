@@ -3,23 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scraper</title>
+    <title>Web Scraper</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6D5BBA, #8D58BF);
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 35px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 530;
+            color: #555;
+            text-align: left;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            width: calc(100% - 20px);
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #3498db;
+            color: white;
+            padding: 11px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
-    <h1>Web Scraper</h1>
-    <form id="scrape-form">
-        <label for="url">URL:</label>
-        <input type="text" id="url" name="url" required>
-        <br>
-        <label for="selector">CSS Selector:</label>
-        <input type="text" id="selector" name="selector" required>
-        <br>
-        <label for="dataFormat">Data Format (regex):</label>
-        <input type="text" id="dataFormat" name="dataFormat" required>
-        <br>
-        <button type="submit">Scrape</button>
-    </form>
-    <div id="result"></div>
+    <div class="container">
+        <h1>Web Scraper</h1>
+        <form id="scrape-form">
+            <label for="url">URL:</label>
+            <input type="text" id="url" name="url" required>
+
+            <label for="selector">CSS Selector:</label>
+            <input type="text" id="selector" name="selector" required>
+
+            <label for="dataFormat">Data Format (regex):</label>
+            <input type="text" id="dataFormat" name="dataFormat" required>
+
+            <button type="submit">Scrape</button>
+        </form>
+        <div id="result"></div>
+    </div>
 
     <script>
         document.getElementById('scrape-form').addEventListener('submit', async (e) => {
